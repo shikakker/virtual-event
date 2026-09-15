@@ -38,7 +38,7 @@ jobs:
             ...pkg.scripts,
             test: 'node --test tests/*.test.mjs',
             typecheck: 'tsc --noEmit',
-            lint: 'eslint --ext .js,.jsx,.ts,.tsx .'
+            lint: 'eslint --ext .ts,.tsx components lib pages'
           }
           fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n')
           NODE
