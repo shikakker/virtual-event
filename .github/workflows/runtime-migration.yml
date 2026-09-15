@@ -42,7 +42,10 @@ jobs:
             typecheck: 'tsc --noEmit',
             lint: 'eslint --ext .ts,.tsx components lib pages'
           }
-          delete pkg.resolutions
+          pkg.resolutions = {
+            ...(pkg.resolutions || {}),
+            'next/postcss': '8.5.23'
+          }
           fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n')
           NODE
           yarn install
