@@ -6,6 +6,7 @@ on:
       - ai/product-completion/virtual-event
     paths:
       - .github/workflows/runtime-migration.yml
+      - scripts/check-production-audit.mjs
 
 permissions:
   contents: write
@@ -58,7 +59,7 @@ jobs:
       - name: Production build
         run: yarn build
       - name: Audit production dependencies
-        run: yarn audit --groups dependencies --level high
+        run: node scripts/check-production-audit.mjs
       - name: Commit verified runtime migration
         run: |
           git config user.name 'Egor Denisov'
