@@ -29,8 +29,9 @@ jobs:
       - name: Upgrade supported runtime
         run: |
           yarn add --exact next@15.5.24 react@18.2.0 react-dom@18.2.0
+          yarn add --exact @sparticuz/chromium@149.0.0 puppeteer-core@25.1.0
           yarn add --dev --exact typescript@5.9.2 @types/node@22.18.6 @types/react@18.3.24 @types/react-dom@18.3.7
-          yarn remove @agility/content-fetch @agility/content-sync chrome-aws-lambda puppeteer-core validator
+          yarn remove @agility/content-fetch @agility/content-sync chrome-aws-lambda validator
           node <<'NODE'
           const fs = require('fs')
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
@@ -41,10 +42,7 @@ jobs:
             typecheck: 'tsc --noEmit',
             lint: 'eslint --ext .ts,.tsx components lib pages'
           }
-          pkg.resolutions = {
-            ...(pkg.resolutions || {}),
-            postcss: '8.5.23'
-          }
+          delete pkg.resolutions
           fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n')
           NODE
           yarn install
