@@ -40,11 +40,12 @@ test('Node runtime is pinned to a supported production line without legacy OpenS
   assert.doesNotMatch(scripts, /openssl-legacy-provider/i);
 });
 
-test('transitive PostCSS is pinned above the audited disclosure fixes', () => {
-  const version = parseVersion(pkg.resolutions?.postcss);
-  assert.ok(version, 'package.json should pin the transitive postcss version');
+test('Next transitive PostCSS is pinned above the audited disclosure fixes', () => {
+  const resolution = pkg.resolutions?.['next/postcss'];
+  const version = parseVersion(resolution);
+  assert.ok(version, 'package.json should pin next/postcss');
   assert.ok(
     isAtLeast(version, [8, 5, 18]),
-    `expected postcss resolution >= 8.5.18, received ${pkg.resolutions?.postcss}`,
+    `expected next/postcss resolution >= 8.5.18, received ${resolution}`,
   );
 });
