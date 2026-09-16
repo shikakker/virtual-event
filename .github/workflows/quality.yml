@@ -1,0 +1,26 @@
+name: Quality
+
+on:
+  push:
+    branches: [ai/product-completion/virtual-event]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn test
+      - run: yarn typecheck
+      - run: yarn lint
+      - run: yarn build
+      - run: node scripts/check-production-audit.mjs
