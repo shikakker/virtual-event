@@ -25,26 +25,32 @@ The branch keeps that flow while hardening provider/runtime boundaries instead o
 - Hardened CMS collection reads so malformed provider responses fail closed to arrays rather than breaking static generation.
 - Hardened screenshot lifecycle and guaranteed browser close on success/failure.
 - Hardened ticket-image route: GET-only, bounded username before Redis/Chromium work, controlled recoverable screenshot failures.
+- Kept `validator` on the patched 13.15.35 runtime because registration legitimately imports `isEmail`.
+- Pinned the Next-owned PostCSS transitive dependency above the audited source-map disclosure fixes (`next/postcss` 8.5.23).
 - Added regression contracts for runtime, CMS, screenshot and ticket-image boundaries.
 - Added severity-aware production dependency audit: high/critical block; moderate/low are reported without Yarn v1 false-failure semantics.
 - Replaced the one-shot self-mutating migration workflow with a permanent read-only Quality workflow.
 
 ## Verification evidence
 
-One-shot migration run `34963913248` on Node 22:
+Permanent exact-head Quality run `35095474742` on SHA `71b53563d34956a60ddf4af1debe41f8b2b9b397`:
 
-- frozen baseline install: PASS
-- supported runtime upgrade: PASS
-- regression tests: **11/11 PASS**
+- frozen `yarn.lock` install: PASS
+- regression tests: **12/12 PASS**
 - TypeScript: PASS
 - lint: PASS
-- production build: PASS
-- production audit high/critical gate: PASS
-- verified dependency/lockfile commit: PASS (`d0edac4bead00cf93675290ad426365b25791b89`)
+- Next 15.5.24 production build: PASS
+- production high/critical audit gate: PASS
 
-Permanent Quality workflow is now the canonical verification path for subsequent commits.
+Exact-head Vercel preview `dpl_4d3WRt5AzppdYiAcipBkevzgSPFr` on the same SHA:
 
-Vercel deployments before the committed migration failed on the inherited Next/Webpack OpenSSL boundary (`digital envelope routines::unsupported`). A fresh exact-head preview using the committed runtime is still required before release readiness is claimed.
+- build: READY
+- `/`: HTTP 200
+- `/speakers`: HTTP 200
+- recent runtime errors after smoke: none detected
+- malformed/missing CMS collections degrade to empty content instead of failing the deployment
+
+The hosted preview still shows inherited starter-kit branding/content (`ACME`, Vercel demo metadata, historical event copy). That is truthful for the current starter/reference product and is not being relabeled as an owned production event.
 
 ## T01–T10 CORE TASKS
 
@@ -56,7 +62,7 @@ Vercel deployments before the committed migration failed on the inherited Next/W
 - T06 — DONE — Harden CMS collection responses used by static-generation flows.
 - T07 — DONE — Add test/typecheck/lint/build/security-audit verification.
 - T08 — DONE — Commit only a migration that passed the full guarded verification loop.
-- T09 — IN PROGRESS — Exact-head Vercel preview and runtime/browser smoke.
+- T09 — DONE — Exact-head Vercel preview READY, root/speakers HTTP smoke PASS and no recent runtime errors.
 - T10 — IN PROGRESS — Registration/GitHub/Redis/CMS end-to-end smoke with real provider configuration.
 
 ## I01–I10 IMPROVEMENTS
@@ -68,9 +74,9 @@ Vercel deployments before the committed migration failed on the inherited Next/W
 - I05 — DONE — Browser resource cleanup.
 - I06 — DONE — Ticket-image input/method validation.
 - I07 — DONE — Controlled screenshot failure response.
-- I08 — DONE — Severity-aware production dependency audit.
+- I08 — DONE — Severity-aware production dependency audit and patched Next PostCSS resolution.
 - I09 — DONE — Permanent immutable Quality CI after one-shot migration.
-- I10 — IN PROGRESS — Exact preview runtime logs, responsive/a11y browser QA and current metadata/provenance documentation.
+- I10 — IN PROGRESS — Interactive responsive/a11y browser QA at 375 / 768 / 1024 / 1440 and current product/provenance decision.
 
 ## F01–F10 PRODUCT FEATURES
 
@@ -87,8 +93,8 @@ Vercel deployments before the committed migration failed on the inherited Next/W
 
 ## Remaining real gates
 
-1. Fresh exact-head Vercel preview on the committed Next 15 runtime.
-2. Browser QA at 375 / 768 / 1024 / 1440 on a working preview.
-3. Provider-backed smoke for registration/GitHub OAuth, Redis ticket state and CMS content with valid environment configuration.
+1. Interactive responsive/a11y browser QA at 375 / 768 / 1024 / 1440; the available Vercel fetch path verifies HTTP/rendered HTML but not visual viewport behavior.
+2. Provider-backed smoke for registration/GitHub OAuth, Redis ticket state and CMS content with valid environment configuration.
+3. Product ownership decision before replacing inherited ACME/Vercel starter branding, event date/content and metadata.
 
 No merge, production promotion, credential mutation, billing action or user-data mutation has been performed.
