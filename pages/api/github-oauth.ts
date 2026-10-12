@@ -16,7 +16,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { nanoid } from 'nanoid';
-import * as qs from 'querystring';
+import { createGithubTokenExchangeRequest } from '@lib/githubOAuthTokenRequest';
 import redis from '@lib/redis';
 import { renderSuccess, renderError } from '@lib/render-github-popup';
 
@@ -31,23 +31,29 @@ export default async function githubOAuth(req: NextApiRequest, res: NextApiRespo
     return;
   }
 
-  const q = qs.stringify({
-    client_id: process.env.NEXT_PUBLIC_GITHUB_OAUTH_CLIENT_ID,
-    client_secret: process.env.GITHUB_OAUTH_CLIENT_SECRET,
-    code: req.query.code
-  });
+  const exchange = createGithubTokenExchangeRequest(
+    process.env.NEXT_PUBLIC_GITHUB_OAUTH_CLIENT_ID,
+    process.env.GITHUB_OAUTH_CLIENT_SECRET,
+    req.query.code
+  );
+  if (!exchange) {
+    res.statusCode = 503;
+    res.end(renderError());
+    return;
+  }
 
-  const accessTokenRes = await fetch(`https://github.com/login/oauth/access_token?${q}`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json'
-    }
-  });
+  let accessTokenRes: Response;
+  try {
+    accessTokenRes = await fetch(exchange.url, exchange.init);
+  } catch {
+    console.error('GitHub OAuth token exchange request failed');
+    res.statusCode = 502;
+    res.end(renderError());
+    return;
+  }
 
   if (!accessTokenRes.ok) {
-    console.error(
-      `Failed to get access token: ${accessTokenRes.status} ${await accessTokenRes.text()}`
-    );
+    console.error(`Failed to get GitHub OAuth token: HTTP ${accessTokenRes.status}`);
     res.statusCode = 500;
     res.end(renderError());
     return;
