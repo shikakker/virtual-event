@@ -23,6 +23,6 @@ test('malformed registration linking payloads fail with 400, without Redis opera
 
 test('same-origin request metadata is guarded before registration linking', () => {
   assert.match(source, /sec-fetch-site/);
-  assert.match(source, /cross-site/);
+  assert.match(source, /same-origin/);
   assert.match(source, /status\(403\)/);
 });
