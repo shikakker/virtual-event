@@ -98,3 +98,11 @@ The hosted preview still shows inherited starter-kit branding/content (`ACME`, V
 3. Product ownership decision before replacing inherited ACME/Vercel starter branding, event date/content and metadata.
 
 No merge, production promotion, credential mutation, billing action or user-data mutation has been performed.
+
+## 2026-10-12 continuation — attendee GitHub binding requires registration ownership
+
+- **P0 IDOR:** `pages/api/save-github-token.ts` previously trusted an arbitrary `body.id` to link an authenticated GitHub identity to a stored ticket. A different known attendee registration ID could be mutated without proving ticket ownership.
+- **Fix:** requests now require `body.id` to exactly match the HttpOnly `COOKIE` set by `/api/register` before any Redis lookup or change. The endpoint accepts only bounded string ID/token payloads, denies non-same-origin Fetch Metadata when present, and replies 503 rather than throwing when Redis is unconfigured.
+- **Regression:** `tests/github-ticket-ownership.test.mjs` guards authorization ordering and malformed input. Exact GitHub branch source readback: **8/8 focused contracts PASS**. This is a source verification, **not** a full runtime request, npm/Next build, account/OAuth or Vercel browser E2E check.
+- **Status:** T/I attendee registration ownership **DONE IN CODE / INTEGRATION PENDING**, overall **PARTIAL**. Existing Draft PR #2, no merge/production promotion, Redis mutation, OAuth transaction or credential changes.
+- **Next:** exact-head test/typecheck/lint/build; run real fake Redis integration: own cookie success, foreign/missing cookie 403, absent Redis 503; verify attendee ticket and GitHub OAuth in preview using fixture accounts.
