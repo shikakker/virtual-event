@@ -16,6 +16,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import redis from '@lib/redis';
+import { COOKIE } from '@lib/constants';
 
 export default async function saveGithubToken(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -27,9 +28,14 @@ export default async function saveGithubToken(req: NextApiRequest, res: NextApiR
     });
   }
 
-  const body = req.body;
+  const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+    ? req.body as Record<string, unknown>
+    : {};
 
-  if (!body.token || !body.id) {
+  if (
+    typeof body.token !== 'string' || body.token.length < 1 || body.token.length > 256 ||
+    typeof body.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(body.id)
+  ) {
     return res.status(400).json({
       error: {
         code: 'bad_input',
@@ -38,8 +44,17 @@ export default async function saveGithubToken(req: NextApiRequest, res: NextApiR
     });
   }
 
+  // The registration is owned by the HttpOnly cookie issued by /api/register.
+  // A caller-provided id is not authorization to alter another attendee's ticket.
+  const sessionId = req.cookies[COOKIE];
+  const fetchSite = req.headers['sec-fetch-site'];
+  if (!sessionId || body.id !== sessionId ||
+      (typeof fetchSite === 'string' && fetchSite !== 'same-origin')) {
+    return res.status(403).json({ error: { code: 'forbidden', message: 'Registration session is required' } });
+  }
+
   if (!redis) {
-    throw new Error('Redis must be set up');
+    return res.status(503).json({ error: { code: 'unavailable', message: 'Registration storage is not configured' } });
   }
 
   const ticketNumber = await redis.hget(`id:${body.id}`, 'ticketNumber');
