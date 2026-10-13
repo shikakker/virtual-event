@@ -28,7 +28,7 @@ test('OAuth callback validates provider responses before network/Redis side effe
   const route = readFileSync(new URL('../pages/api/github-oauth.ts', import.meta.url), 'utf8');
   assert.match(route, /parseGithubOAuthTokenResponse/);
   assert.match(route, /parseGithubUserProfile/);
-  assert.doesNotMatch(route, /const \\{ access_token: accessToken \\} = await accessTokenRes\\.json\\(\\)/);
+  assert.ok(!route.includes('const { access_token: accessToken } = await accessTokenRes.json()'));
   assert.ok(route.indexOf('parseGithubOAuthTokenResponse(') < route.indexOf("fetch('https://api.github.com/user'"));
-  assert.doesNotMatch(route, /await userRes\\.text\\(\\)/);
+  assert.ok(!route.includes('await userRes.text()'));
 });
