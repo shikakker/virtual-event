@@ -14,28 +14,44 @@
  * limitations under the License.
  */
 
-import chrome from 'chrome-aws-lambda';
+import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 
+function getLocalExecutablePath() {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
+  if (process.platform === 'win32') {
+    return 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe';
+  }
+
+  if (process.platform === 'linux') {
+    return '/usr/bin/google-chrome';
+  }
+
+  return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+}
+
 export default async function screenshot(url: string) {
-  const options = process.env.AWS_REGION
-    ? {
-        args: chrome.args,
-        executablePath: await chrome.executablePath,
-        headless: chrome.headless
-      }
-    : {
-        args: [],
-        executablePath:
-          process.platform === 'win32'
-            ? 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
-            : process.platform === 'linux'
-            ? '/usr/bin/google-chrome'
-            : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-      };
-  const browser = await puppeteer.launch(options);
-  const page = await browser.newPage();
-  await page.setViewport({ width: 2000, height: 1000 });
-  await page.goto(url, { waitUntil: 'networkidle0' });
-  return await page.screenshot({ type: 'png' });
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_REGION);
+  const executablePath = isServerless
+    ? await chromium.executablePath()
+    : getLocalExecutablePath();
+
+  const browser = await puppeteer.launch({
+    args: isServerless ? chromium.args : [],
+    executablePath,
+    headless: 'shell'
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 2000, height: 1000 });
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 15000 });
+    const file = await page.screenshot({ type: 'png' });
+    return Buffer.from(file);
+  } finally {
+    await browser.close();
+  }
 }

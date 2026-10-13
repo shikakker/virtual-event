@@ -85,9 +85,11 @@ export default function Form({ defaultUsername = '', setTicketGenerationState }:
 
         const windowWidth = 600;
         const windowHeight = 700;
-        // https://stackoverflow.com/a/32261263/114157
-        const windowTop = window.top.outerHeight / 2 + window.top.screenY - 700 / 2;
-        const windowLeft = window.top.outerWidth / 2 + window.top.screenX - 600 / 2;
+        // window.top can be null in sandboxed/embedded contexts. Fall back to
+        // the current window so the OAuth popup remains usable and type-safe.
+        const hostWindow = window.top ?? window;
+        const windowTop = hostWindow.outerHeight / 2 + hostWindow.screenY - windowHeight / 2;
+        const windowLeft = hostWindow.outerWidth / 2 + hostWindow.screenX - windowWidth / 2;
 
         const openedWindow = window.open(
           `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(

@@ -24,18 +24,37 @@ const cmsApi: {
   getAllJobs: () => Promise<Job[]>;
 } = datoCmsApi;
 
+async function safeCollection<T>(label: string, load: () => Promise<T[]>): Promise<T[]> {
+  try {
+    const items = await load();
+    if (Array.isArray(items)) {
+      return items;
+    }
+
+    // eslint-disable-next-line no-console
+    console.warn(`[cms] ${label} returned an invalid collection`);
+    return [];
+  } catch (_error) {
+    // Keep builds and request-time fallbacks recoverable when the CMS is
+    // unavailable. Provider errors stay server-side and are not reflected to users.
+    // eslint-disable-next-line no-console
+    console.warn(`[cms] ${label} unavailable`);
+    return [];
+  }
+}
+
 export async function getAllSpeakers(): Promise<Speaker[]> {
-  return cmsApi.getAllSpeakers();
+  return safeCollection('speakers', cmsApi.getAllSpeakers);
 }
 
 export async function getAllStages(): Promise<Stage[]> {
-  return cmsApi.getAllStages();
+  return safeCollection('stages', cmsApi.getAllStages);
 }
 
 export async function getAllSponsors(): Promise<Sponsor[]> {
-  return cmsApi.getAllSponsors();
+  return safeCollection('sponsors', cmsApi.getAllSponsors);
 }
 
 export async function getAllJobs(): Promise<Job[]> {
-  return cmsApi.getAllJobs();
+  return safeCollection('jobs', cmsApi.getAllJobs);
 }

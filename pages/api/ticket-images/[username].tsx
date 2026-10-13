@@ -19,23 +19,37 @@ import screenshot from '@lib/screenshot';
 import { SITE_URL, SAMPLE_TICKET_NUMBER } from '@lib/constants';
 import redis from '@lib/redis';
 
+const GITHUB_USERNAME_PATTERN = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
+
 export default async function ticketImages(req: NextApiRequest, res: NextApiResponse) {
-  let url: string;
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).send('Method Not Allowed');
+  }
+
   const { username } = req.query || {};
-  if (username) {
+  if (typeof username !== 'string') {
+    return res.status(404).send('Not Found');
+  }
+
+  if (username.length > 39 || !GITHUB_USERNAME_PATTERN.test(username)) {
+    return res.status(400).send('Invalid username');
+  }
+
+  try {
+    let url: string;
+
     if (redis) {
-      const usernameString = username.toString();
       const [name, ticketNumber] = await redis.hmget(
-        `user:${usernameString}`,
+        `user:${username}`,
         'name',
         'ticketNumber'
       );
       if (!ticketNumber) {
-        res.statusCode = 404;
-        return res.end('Not Found');
+        return res.status(404).send('Not Found');
       }
       url = `${SITE_URL}/ticket-image?username=${encodeURIComponent(
-        usernameString
+        username
       )}&ticketNumber=${encodeURIComponent(ticketNumber)}`;
       if (name) {
         url = `${url}&name=${encodeURIComponent(name)}`;
@@ -43,15 +57,17 @@ export default async function ticketImages(req: NextApiRequest, res: NextApiResp
     } else {
       url = `${SITE_URL}/ticket-image?ticketNumber=${encodeURIComponent(SAMPLE_TICKET_NUMBER)}`;
     }
+
     const file = await screenshot(url);
-    res.setHeader('Content-Type', `image/png`);
+    res.setHeader('Content-Type', 'image/png');
     res.setHeader(
       'Cache-Control',
-      `public, immutable, no-transform, s-maxage=31536000, max-age=31536000`
+      'public, immutable, no-transform, s-maxage=31536000, max-age=31536000'
     );
-    res.statusCode = 200;
-    res.end(file);
-  } else {
-    res.status(404).send('Not Found');
+    return res.status(200).send(file);
+  } catch (_error) {
+    // Do not expose browser/Redis/provider details to the caller.
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(503).send('Image generation unavailable');
   }
 }

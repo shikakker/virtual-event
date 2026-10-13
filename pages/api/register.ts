@@ -23,6 +23,7 @@ import cookie from 'cookie';
 import ms from 'ms';
 import redis, { emailToId } from '@lib/redis';
 import { validateCaptchaResult, IS_CAPTCHA_ENABLED } from '@lib/captcha';
+import { parseRegistrationBody } from '@lib/registrationInput';
 
 type ErrorResponse = {
   error: {
@@ -44,9 +45,20 @@ export default async function register(
     });
   }
 
-  const email: string = ((req.body.email as string) || '').trim().toLowerCase();
-  const token: string = req.body.token as string;
-  if (!validator.isEmail(email)) {
+  // Without durable server storage, a sample ticket is not a registration.
+  // Keep the original local template fallback, but fail closed in production.
+  if (process.env.NODE_ENV === 'production' && !redis) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.status(503).json({
+      error: {
+        code: 'registration_unavailable',
+        message: 'Registration is temporarily unavailable'
+      }
+    });
+  }
+
+  const input = parseRegistrationBody(req.body);
+  if (!input || !validator.isEmail(input.email)) {
     return res.status(400).json({
       error: {
         code: 'bad_email',
@@ -55,6 +67,7 @@ export default async function register(
     });
   }
 
+  const { email, token } = input;
   if (IS_CAPTCHA_ENABLED) {
     const isCaptchaValid = await validateCaptchaResult(token);
 
