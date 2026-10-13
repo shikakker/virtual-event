@@ -32,3 +32,19 @@ test('real registration route parses and validates body before redis or email ch
   assert.doesNotMatch(source, /req\.body\.email as string/);
   assert.ok(source.indexOf('parseRegistrationBody(req.body)') < source.indexOf('validator.isEmail'));
 });
+
+
+test('production signup must not manufacture a successful sample ticket when Redis is missing', () => {
+  const route = readFileSync(new URL('../pages/api/register.ts', import.meta.url), 'utf8');
+  assert.match(route, /process\.env\.NODE_ENV === 'production' && !redis/);
+  assert.match(route, /status\(503\)\.json\(/);
+  assert.match(route, /registration_unavailable/);
+  assert.ok(route.indexOf("process.env.NODE_ENV === 'production' && !redis") < route.indexOf('if (IS_CAPTCHA_ENABLED)'));
+});
+
+test('local template fallback remains explicitly sandbox-only', () => {
+  const route = readFileSync(new URL('../pages/api/register.ts', import.meta.url), 'utf8');
+  const fallback = route.indexOf('ticketNumber = SAMPLE_TICKET_NUMBER');
+  const guard = route.indexOf("process.env.NODE_ENV === 'production' && !redis");
+  assert.ok(guard >= 0 && fallback > guard);
+});
