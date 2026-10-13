@@ -16,7 +16,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { nanoid } from 'nanoid';
-import { createGithubTokenExchangeRequest } from '@lib/githubOAuthTokenRequest';
+import { createGithubTokenExchangeRequest, parseGithubOAuthTokenResponse, parseGithubUserProfile } from '@lib/githubOAuthTokenRequest';
 import redis from '@lib/redis';
 import { renderSuccess, renderError } from '@lib/render-github-popup';
 
@@ -59,22 +59,43 @@ export default async function githubOAuth(req: NextApiRequest, res: NextApiRespo
     return;
   }
 
-  const { access_token: accessToken } = await accessTokenRes.json();
-
-  const userRes = await fetch('https://api.github.com/user', {
-    headers: {
-      Authorization: `bearer ${accessToken as string}`
-    }
-  });
-
-  if (!userRes.ok) {
-    console.error(`Failed to get GitHub user: ${userRes.status} ${await userRes.text()}`);
-    res.statusCode = 500;
+  // GitHub may return HTTP 200 and a JSON error object for an invalid code.
+  const tokenBody: unknown = await accessTokenRes.json().catch(() => null);
+  const accessToken = parseGithubOAuthTokenResponse(tokenBody);
+  if (!accessToken) {
+    console.error('GitHub OAuth exchange did not return a usable token');
+    res.statusCode = 502;
     res.end(renderError());
     return;
   }
 
-  const user = await userRes.json();
+  let userRes: Response;
+  try {
+    userRes = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `bearer ${accessToken}` },
+      redirect: 'error',
+    });
+  } catch {
+    console.error('GitHub OAuth user profile request failed');
+    res.statusCode = 502;
+    res.end(renderError());
+    return;
+  }
+
+  if (!userRes.ok) {
+    console.error(`Failed to get GitHub OAuth profile: HTTP ${userRes.status}`);
+    res.statusCode = 502;
+    res.end(renderError());
+    return;
+  }
+
+  const user = parseGithubUserProfile(await userRes.json().catch(() => null));
+  if (!user) {
+    console.error('GitHub OAuth profile was missing required fields');
+    res.statusCode = 502;
+    res.end(renderError());
+    return;
+  }
 
   if (redis) {
     const token = nanoid();
