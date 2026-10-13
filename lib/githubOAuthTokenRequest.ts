@@ -32,7 +32,6 @@ export function createGithubTokenExchangeRequest(
   };
 }
 
-
 /** GitHub can return HTTP 200 with an error object rather than an access token. */
 export function parseGithubOAuthTokenResponse(value: unknown): string | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
