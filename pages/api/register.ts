@@ -45,6 +45,18 @@ export default async function register(
     });
   }
 
+  // Without durable server storage, a sample ticket is not a registration.
+  // Keep the original local template fallback, but fail closed in production.
+  if (process.env.NODE_ENV === 'production' && !redis) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.status(503).json({
+      error: {
+        code: 'registration_unavailable',
+        message: 'Registration is temporarily unavailable'
+      }
+    });
+  }
+
   const input = parseRegistrationBody(req.body);
   if (!input || !validator.isEmail(input.email)) {
     return res.status(400).json({
